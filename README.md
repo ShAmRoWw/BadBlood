@@ -1,5 +1,7 @@
 This fork contains a significant refactor of BadBlood's core scripts, improving performance through batch-based group membership assignment (replacing per-user LDAP calls with chunked Add-ADGroupMember batches) and in-runspace caching of name lists and lookup files. It also removes broken multithreading code that caused AD connection limit issues, fixes a bug where the duplicate-name check variable wasn't reset per iteration, and adds member deduplication to prevent "already a member" errors.
 
+Needs testing.
+
 ---
 
 BadBlood
