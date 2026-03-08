@@ -2,353 +2,251 @@
     .Synopsis
        Generates users, groups, OUs, computers in an active directory domain.  Then places ACLs on random OUs
     .DESCRIPTION
-       This tool is for research purposes and training only.  Intended only for personal use.  This adds a large number of objects into a domain, and should never be  run in production.
+       This tool is for research purposes and training only.  Intended only for personal use.  This adds a large number of objects into a domain, and should never be run in production.
     .EXAMPLE
-       There are currently no parameters for the tool.  Simply run the ps1 as a DA and it begins. Follow the prompts and type 'badblood' when appropriate and the tool runs.
+       .\Invoke-BadBlood.ps1 -UserCount 2500 -GroupCount 500 -ComputerCount 100
+    .PARAMETER UserCount
+       Number of users to create (default 2500).
+    .PARAMETER GroupCount
+       Number of groups to create (default 500).
+    .PARAMETER ComputerCount
+       Number of computers to create (default 100).
+    .PARAMETER SkipOuCreation
+       Skip the OU creation if you already have done it.
+    .PARAMETER SkipLapsInstall
+       Skip the LAPS deployment if you already have done it.
+    .PARAMETER NonInteractive
+       Make non-interactive for automation.
     .OUTPUTS
        [String]
     .NOTES
        Written by David Rowe, Blog secframe.com
        Twitter : @davidprowe
-       I take no responsibility for any issues caused by this script.  I am not responsible if this gets run in a production domain. 
-      Thanks HuskyHacks for user/group/computer count modifications.  I moved them to parameters so that this tool can be called in a more rapid fashion.
+       I take no responsibility for any issues caused by this script.  I am not responsible if this gets run in a production domain.
+       Thanks HuskyHacks for user/group/computer count modifications.
     .FUNCTIONALITY
        Adds a ton of stuff into a domain.  Adds Users, Groups, OUs, Computers, and a vast amount of ACLs in a domain.
     .LINK
        http://www.secframe.com/badblood
-   
-    #>
+#>
 [CmdletBinding()]
-    
+
 param
 (
-   [Parameter(Mandatory = $false,
-      Position = 1,
-      HelpMessage = 'Supply a count for user creation default 2500')]
-   [Int32]$UserCount = 2500,
-   [Parameter(Mandatory = $false,
-      Position = 2,
-      HelpMessage = 'Supply a count for user creation default 500')]
-   [int32]$GroupCount = 500,
-   [Parameter(Mandatory = $false,
-      Position = 3,
-      HelpMessage = 'Supply the script directory for where this script is stored')]
-   [int32]$ComputerCount = 100,
-   [Parameter(Mandatory = $false,
-      Position = 4,
-      HelpMessage = 'Skip the OU creation if you already have done it')]
+   [Parameter(Mandatory = $false, Position = 1, HelpMessage = 'Number of users to create (default 2500)')]
+   [Int32]$UserCount = 50,
+
+   [Parameter(Mandatory = $false, Position = 2, HelpMessage = 'Number of groups to create (default 500)')]
+   [Int32]$GroupCount = 5,
+
+   [Parameter(Mandatory = $false, Position = 3, HelpMessage = 'Number of computers to create (default 100)')]
+   [Int32]$ComputerCount = 5,
+
+   [Parameter(Mandatory = $false, HelpMessage = 'Skip the OU creation if you already have done it')]
    [switch]$SkipOuCreation,
-   [Parameter(Mandatory = $false,
-      Position = 5,
-      HelpMessage = 'Skip the LAPS deployment if you already have done it')]
+
+   [Parameter(Mandatory = $false, HelpMessage = 'Skip the LAPS deployment if you already have done it')]
    [switch]$SkipLapsInstall,
-   [Parameter(Mandatory = $false,
-      Position = 6,
-      HelpMessage = 'Make non-interactive for automation')]
+
+   [Parameter(Mandatory = $false, HelpMessage = 'Make non-interactive for automation')]
    [switch]$NonInteractive
 )
+
 function Get-ScriptDirectory {
    Split-Path -Parent $PSCommandPath
 }
 $basescriptPath = Get-ScriptDirectory
-$totalscripts = 8
+$totalscripts   = 8
+$i              = 0
 
-$i = 0
-Clear-host
-write-host "Welcome to BadBlood"
-if($NonInteractive -eq $false){
-    Write-Host  'Press any key to continue...';
-    write-host "`n"
-    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+Clear-Host
+Write-Host "Welcome to BadBlood"
+if (-not $NonInteractive) {
+    Write-Host 'Press any key to continue...'
+    Write-Host "`n"
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
-write-host "The first tool that absolutely mucks up your TEST domain"
-write-host "This tool is never meant for production and can totally screw up your domain"
+Write-Host "The first tool that absolutely mucks up your TEST domain"
+Write-Host "This tool is never meant for production and can totally screw up your domain"
 
-if($NonInteractive -eq $false){
-    Write-Host  'Press any key to continue...';
-    write-host "`n"
-    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+if (-not $NonInteractive) {
+    Write-Host 'Press any key to continue...'
+    Write-Host "`n"
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
-Write-Host  'Press any key to continue...';
-write-host "You are responsible for how you use this tool. It is intended for personal use only"
-write-host "This is not intended for commercial use"
-if($NonInteractive -eq $false){
-    Write-Host  'Press any key to continue...';
-    write-host "`n"
-    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+Write-Host "You are responsible for how you use this tool. It is intended for personal use only"
+Write-Host "This is not intended for commercial use"
+if (-not $NonInteractive) {
+    Write-Host 'Press any key to continue...'
+    Write-Host "`n"
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
-write-host "`n"
-write-host "Domain size generated via parameters `n Users: $UserCount `n Groups: $GroupCount `n Computers: $ComputerCount"
-write-host "`n"
-$badblood = "badblood"
-if($NonInteractive -eq $false){
+Write-Host "`n"
+Write-Host "Domain size generated via parameters`n Users: $UserCount`n Groups: $GroupCount`n Computers: $ComputerCount"
+Write-Host "`n"
 
-    $badblood = Read-Host -Prompt "Type `'badblood`' to deploy some randomness into a domain"
-    $badblood.tolower()
+$badblood = 'badblood'
+if (-not $NonInteractive) {
+    $badblood = Read-Host -Prompt "Type 'badblood' to deploy some randomness into a domain"
+    $badblood = $badblood.ToLower()
     if ($badblood -ne 'badblood') { exit }
 }
+
 if ($badblood -eq 'badblood') {
 
-   $Domain = Get-addomain
+    $Domain = Get-ADDomain
 
-   # LAPS STUFF
-   if ($PSBoundParameters.ContainsKey('SkipLapsInstall') -eq $false)
-      {
-         Write-Progress -Activity "Random Stuff into A domain" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-         .($basescriptPath + '\AD_LAPS_Install\InstallLAPSSchema.ps1')
-         Write-Progress -Activity "Random Stuff into A domain: Install LAPS" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-      }
-   else{}
-   
-   $I++
+    # =========================================================================
+    # LAPS
+    # =========================================================================
+    if (-not $PSBoundParameters.ContainsKey('SkipLapsInstall')) {
+        Write-Progress -Activity "Random Stuff into A domain" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+        . ($basescriptPath + '\AD_LAPS_Install\InstallLAPSSchema.ps1')
+        Write-Progress -Activity "Random Stuff into A domain: Install LAPS" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    }
+    $i++
 
+    # =========================================================================
+    # OU Structure
+    # =========================================================================
+    if (-not $PSBoundParameters.ContainsKey('SkipOuCreation')) {
+        . ($basescriptPath + '\AD_OU_CreateStructure\CreateOUStructure.ps1')
+        Write-Progress -Activity "Random Stuff into A domain - Creating OUs" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    }
+    $i++
 
-   #OU Structure Creation
-   if ($PSBoundParameters.ContainsKey('SkipOuCreation') -eq $false)
-      {
-         .($basescriptPath + '\AD_OU_CreateStructure\CreateOUStructure.ps1')
-         Write-Progress -Activity "Random Stuff into A domain - Creating OUs" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-      }
-   else{}
-   $I++
+    # =========================================================================
+    # Shared pre-loaded data (available to all Create* functions via scope chain)
+    # Pre-loading eliminates repeated disk I/O and AD queries inside each call.
+    # =========================================================================
+    $ousAll    = Get-ADOrganizationalUnit -Filter *
+    $GlobalOUDNs  = [string[]]($ousAll | Select-Object -ExpandProperty DistinguishedName)
+    $GlobalSetDC  = $Domain.pdcemulator
+    $GlobalDNSRoot = $Domain.dnsroot
+    $GlobalDomainDN = $Domain.distinguishedname
 
-   
-   # User Creation
-   $ousAll = Get-adorganizationalunit -filter *
-   write-host "Creating Users on Domain" -ForegroundColor Green
-    
-   
-   Write-Progress -Activity "Random Stuff into A domain - Creating Users" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   $I++
-   
-   .($basescriptPath + '\AD_Users_Create\CreateUsers.ps1')
-   $createuserscriptpath = $basescriptPath + '\AD_Users_Create\'
-   do {
-      createuser -Domain $Domain -OUList $ousAll -ScriptDir $createuserscriptpath
-      Write-Progress -Activity "Random Stuff into A domain - Creating $UserCount Users" -Status "Progress:" -PercentComplete ($x / $UserCount * 100)
-      $x++
-   }while ($x -lt $UserCount)
+    # =========================================================================
+    # User Creation  -  sequential, single-threaded
+    #
+    # Why not parallel?  AD's NTDS engine serialises all writes internally, so
+    # parallel LDAP connections don't increase write throughput.  They only add
+    # LDAP connection overhead, TCP handle pressure, and NTDS transaction
+    # contention — which is what caused the DC to become unresponsive.
+    # The real speedup comes from pre-loading name files (done below) so the
+    # function never reads from disk inside the loop.
+    # =========================================================================
+    Write-Host "Creating $UserCount Users on Domain" -ForegroundColor Green
+    Write-Progress -Activity "Random Stuff into A domain - Creating Users" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    $i++
 
-  #Group Creation
-   $AllUsers = Get-aduser -Filter *
-   write-host "Creating Groups on Domain" -ForegroundColor Green
+    . ($basescriptPath + '\AD_Users_Create\CreateUsers.ps1')
+    $GlobalScriptPath = $basescriptPath + '\AD_Users_Create\'
 
-   $x = 1
-   Write-Progress -Activity "Random Stuff into A domain - Creating $GroupCount Groups" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   $i++
-   .($basescriptPath + '\AD_Groups_Create\CreateGroup.ps1')
-   $createGroupScriptPath = $basescriptPath + '\AD_Groups_Create\'
-    
-   do {
-      Creategroup -Domain $Domain -OUList $ousAll -UserList $AllUsers -ScriptDir $createGroupScriptPath
-      Write-Progress -Activity "Random Stuff into A domain - Creating $GroupCount Groups" -Status "Progress:" -PercentComplete ($x / $GroupCount * 100)
-      $x++
-   }while ($x -lt $GroupCount)
-   $Grouplist = Get-ADGroup -Filter { GroupCategory -eq "Security" -and GroupScope -eq "Global" } -Properties isCriticalSystemObject
-   $LocalGroupList = Get-ADGroup -Filter { GroupScope -eq "domainlocal" } -Properties isCriticalSystemObject
-   
-   #Computer Creation Time
-   write-host "Creating Computers on Domain" -ForegroundColor Green
+    Write-Host "  Pre-loading name files..." -ForegroundColor DarkGray
+    $GlobalFemaleNames = [string[]](Get-Content ($GlobalScriptPath + 'Names\femalenames-usa-top1000.txt'))
+    $GlobalMaleNames   = [string[]](Get-Content ($GlobalScriptPath + 'Names\malenames-usa-top1000.txt'))
+    $GlobalFamilyNames = [string[]](Get-Content ($GlobalScriptPath + 'Names\familynames-usa-top1000.txt'))
 
-   $X = 1
-   Write-Progress -Activity "Random Stuff into A domain - Creating Computers" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   .($basescriptPath + '\AD_Computers_Create\CreateComputers.ps1')
-   $I++
-   do {
-      Write-Progress -Activity "Random Stuff into A domain - Creating $ComputerCount computers" -Status "Progress:" -PercentComplete ($x / $ComputerCount * 100)
-      createcomputer -Domain $Domain -OUList $ousAll -ScriptDir $createuserscriptpath
-      $x++
-   }while ($x -lt $ComputerCount)
-   $Complist = get-adcomputer -filter *
-    
+    for ($u = 1; $u -le $UserCount; $u++) {
+        CreateUser
+        if ($u % 250 -eq 0 -or $u -eq $UserCount) {
+            Write-Progress -Activity "Creating $UserCount Users" `
+                -Status "$u / $UserCount" `
+                -PercentComplete ($u / $UserCount * 100)
+        }
+    }
+    Write-Progress -Activity "Creating $UserCount Users" -Completed
 
-   #Permission Creation of ACLs
-   $I++
-   write-host "Creating Permissions on Domain" -ForegroundColor Green
-   Write-Progress -Activity "Random Stuff into A domain - Creating Random Permissions" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   .($basescriptPath + '\AD_Permissions_Randomizer\GenerateRandomPermissions.ps1')
-    
-    
-   # Nesting of objects
-   $I++
-   write-host "Nesting objects into groups on Domain" -ForegroundColor Green
-   .($basescriptPath + '\AD_Groups_Create\AddRandomToGroups.ps1')
-   Write-Progress -Activity "Random Stuff into A domain - Adding Stuff to Stuff and Things" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   AddRandomToGroups -Domain $Domain -Userlist $AllUsers -GroupList $Grouplist -LocalGroupList $LocalGroupList -complist $Complist
+    # =========================================================================
+    # Group Creation
+    # =========================================================================
+    $AllUsers = Get-ADUser -Filter *
+    $GlobalUserSummary    = @($AllUsers | Select-Object SamAccountName, DistinguishedName)
 
-   # ATTACK Vector Automation
+    Write-Host "Creating $GroupCount Groups on Domain" -ForegroundColor Green
+    Write-Progress -Activity "Random Stuff into A domain - Creating $GroupCount Groups" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    $i++
 
-   # SPN Generation
-   $I++
-   write-host "Adding random SPNs to a few User and Computer Objects" -ForegroundColor Green
-   Write-Progress -Activity "SPN Stuff Now" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   .($basescriptpath + '\AD_Attack_Vectors\AD_SPN_Randomizer\CreateRandomSPNs.ps1')
-   CreateRandomSPNs -SPNCount 50
+    . ($basescriptPath + '\AD_Groups_Create\CreateGroup.ps1')
+    $GlobalGroupScriptPath = $basescriptPath + '\AD_Groups_Create\'
+    $GlobalHotmailWords    = [string[]](Get-Content ($GlobalGroupScriptPath + 'hotmail.txt'))
 
-   write-host "Adding ASREP for a few users" -ForegroundColor Green
-   Write-Progress -Activity "Adding ASREP Now" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   # get .05 percent of the all users output and asrep them
-   $ASREPCount = [Math]::Ceiling($AllUsers.count * .05)
-   $ASREPUsers = @()
-   $asrep = 1
-   do {
+    for ($g = 1; $g -le $GroupCount; $g++) {
+        CreateGroup
+        if ($g % 100 -eq 0 -or $g -eq $GroupCount) {
+            Write-Progress -Activity "Creating $GroupCount Groups" `
+                -Status "$g / $GroupCount" `
+                -PercentComplete ($g / $GroupCount * 100)
+        }
+    }
+    Write-Progress -Activity "Creating $GroupCount Groups" -Completed
 
-      $ASREPUsers += get-random($AllUsers)
-      $asrep++}while($asrep -le $ASREPCount)
+    $Grouplist      = Get-ADGroup -Filter { GroupCategory -eq "Security" -and GroupScope -eq "Global" } -Properties isCriticalSystemObject
+    $LocalGroupList = Get-ADGroup -Filter { GroupScope -eq "domainlocal" } -Properties isCriticalSystemObject
 
-   .($basescriptpath + '\AD_Attack_Vectors\ASREP_NotReqPreAuth.ps1')
-   ADREP_NotReqPreAuth -UserList $ASREPUsers
-      <#
-   write-host "Adding Weak User Passwords for a few users" -ForegroundColor Green
-   Write-Progress -Activity "Adding Weak User Passwords" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   # get .05 percent of the all users output and asrep them
-   $WeakCount = [Math]::Ceiling($AllUsers.count * .02)
-   $WeakUsers = @()
-   $asrep = 1
-   do {
+    # =========================================================================
+    # Computer Creation
+    # =========================================================================
+    Write-Host "Creating $ComputerCount Computers on Domain" -ForegroundColor Green
+    Write-Progress -Activity "Random Stuff into A domain - Creating Computers" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    $i++
 
-      $WeakUsers += get-random($AllUsers)
-      $asrep++}while($asrep -le $WeakCount)
+    . ($basescriptPath + '\AD_Computers_Create\CreateComputers.ps1')
+    $GlobalComputerScriptPath = $basescriptPath + '\AD_Computers_Create\'
+    $Global3LetterCodes       = @(Import-Csv ($basescriptPath + '\AD_OU_CreateStructure\3lettercodes.csv'))
 
-   .($basescriptpath + '\AD_Attack_Vectors\WeakUserPasswords.ps1')
-   WeakUserPasswords -UserList $WeakUsers
-    #>
+    for ($c = 1; $c -le $ComputerCount; $c++) {
+        CreateComputer
+        if ($c % 25 -eq 0 -or $c -eq $ComputerCount) {
+            Write-Progress -Activity "Creating $ComputerCount Computers" `
+                -Status "$c / $ComputerCount" `
+                -PercentComplete ($c / $ComputerCount * 100)
+        }
+    }
+    Write-Progress -Activity "Creating $ComputerCount Computers" -Completed
 
+    $Complist = Get-ADComputer -Filter *
 
+    # =========================================================================
+    # Permission / ACL Creation
+    # =========================================================================
+    $i++
+    Write-Host "Creating Permissions on Domain" -ForegroundColor Green
+    Write-Progress -Activity "Random Stuff into A domain - Creating Random Permissions" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    . ($basescriptPath + '\AD_Permissions_Randomizer\GenerateRandomPermissions.ps1')
+
+    # =========================================================================
+    # Group Nesting
+    # =========================================================================
+    $i++
+    Write-Host "Nesting objects into groups on Domain" -ForegroundColor Green
+    . ($basescriptPath + '\AD_Groups_Create\AddRandomToGroups.ps1')
+    Write-Progress -Activity "Random Stuff into A domain - Adding Stuff to Stuff and Things" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    AddRandomToGroups -Domain $Domain -Userlist $AllUsers -GroupList $Grouplist -LocalGroupList $LocalGroupList -complist $Complist
+
+    # =========================================================================
+    # SPN Generation
+    # =========================================================================
+    $i++
+    Write-Host "Adding random SPNs to a few User and Computer Objects" -ForegroundColor Green
+    Write-Progress -Activity "SPN Stuff Now" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    . ($basescriptpath + '\AD_Attack_Vectors\AD_SPN_Randomizer\CreateRandomSPNs.ps1')
+    CreateRandomSPNs -SPNCount 50
+
+    # =========================================================================
+    # ASREP Roasting setup
+    # =========================================================================
+    Write-Host "Adding ASREP for a few users" -ForegroundColor Green
+    Write-Progress -Activity "Adding ASREP Now" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
+    $ASREPCount = [Math]::Ceiling($AllUsers.Count * .05)
+    $ASREPUsers = if ($ASREPCount -ge $AllUsers.Count) {
+        $AllUsers
+    } else {
+        Get-Random -Count $ASREPCount -InputObject $AllUsers
+    }
+
+    . ($basescriptpath + '\AD_Attack_Vectors\ASREP_NotReqPreAuth.ps1')
+    ADREP_NotReqPreAuth -UserList $ASREPUsers
+
+    Write-Host "BadBlood complete." -ForegroundColor Green
 }
-# $Definition = Get-Content Function:\CreateUser -ErrorAction Stop
-   <#
-   Attempt at multi threading.  Issues with AD Limits and connections per user per second.
-   #Add custom function to runspace pool https://devblogs.microsoft.com/scripting/powertip-add-custom-function-to-runspace-pool/
-   $Definition = Get-Content ($basescriptPath + '\AD_Users_Create\CreateUsers.ps1') -ErrorAction Stop
-   #Create a sessionstate function entry
-   $SessionStateFunction = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry -ArgumentList ‘CreateUser’, $Definition
-   #Create a SessionStateFunction
-   $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-   $initialSessionState.ImportPSModule("ActiveDirectory")
-   $InitialSessionState.Commands.Add($SessionStateFunction)
-
-   $RunspacePool = [RunspaceFactory]::CreateRunspacePool(1,5,$InitialSessionState,$Host)
-   $RunspacePool.Open()
-   $runspaces = $results = @()
-   do {
-     
-      $PowerShell = [powershell]::Create()
-      [void]$PowerShell.AddScript({CreateUser})
-      [void]$PowerShell.AddArgument($Domain)
-      [void]$PowerShell.AddArgument($ousAll)
-      [void]$PowerShell.AddArgument($createuserscriptpath)
-      $PowerShell.RunspacePool = $RunspacePool
-      $runspaces += [PSCustomObject]@{ Pipe = $PowerShell; Status = $PowerShell.BeginInvoke() }
-      #$runspaces.pipe.streams.error
-      
-      # $Jobs += $PowerShell.BeginInvoke()
-       $x++
-
-   }while ($x -lt $UserCount)
-
-   while ($runspaces.status.IsCompleted -notcontains $true) {
-        
-   }
-
-   foreach ($runspace in $runspaces ) {
-      # EndInvoke method retrieves the results of the asynchronous call
-      $results += $runspace.Pipe.EndInvoke($runspace.Status)
-      $runspace.Pipe.Dispose()
-  }
-  $RunspacePool.Close() 
-   $RunspacePool.Dispose()
-
-   #Group Creation
-   $I++
-   $AllUsers = Get-aduser -Filter *
-   Write-Progress -Activity "Random Stuff into A domain - Creating Groups" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   write-host "Creating Groups on Domain" -ForegroundColor Green
-
-   $x = 1
-   .($basescriptPath + '\AD_Groups_Create\CreateGroup.ps1')
-   
-   #Create a SessionStateFunction
-  
-   
-
-   $createGroupScriptPath = $basescriptPath + '\AD_Groups_Create\'
-   $Definition = Get-Content Function:\CreateGroup -ErrorAction Stop
-   # $Definition = Get-Content ($basescriptPath + '\AD_Groups_Create\CreateGroup.ps1') -ErrorAction Stop
-
-   #Create a sessionstate function entry
-   $SessionStateFunction = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry -ArgumentList ‘CreateGroup’, $Definition
-   #Create a SessionStateFunction
-   $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-   $initialSessionState.ImportPSModule("ActiveDirectory")
-   $InitialSessionState.Commands.Add($SessionStateFunction)
-
-   $RunspacePool = [RunspaceFactory]::CreateRunspacePool(1,5,$InitialSessionState,$Host)
-   $RunspacePool.Open()
-   $runspaces = $results = @()
-   do {
-      $PowerShell = [powershell]::Create()
-      [void]$PowerShell.AddScript({CreateGroup})
-      [void]$PowerShell.AddArgument($Domain)
-      [void]$PowerShell.AddArgument($ousAll)
-      [void]$PowerShell.AddArgument($AllUsers)
-      [void]$PowerShell.AddArgument($createGroupScriptPath)
-      $PowerShell.RunspacePool = $RunspacePool
-      $runspaces += [PSCustomObject]@{ Pipe = $PowerShell; Status = $PowerShell.BeginInvoke() }
-
-      $x++
-   }while ($x -lt $GroupCount)
-   while ($runspaces.Status.IsCompleted -notcontains $true) {
-        
-   }
-   foreach ($runspace in $runspaces ) {
-      # EndInvoke method retrieves the results of the asynchronous call
-      $results += $runspace.Pipe.EndInvoke($runspace.Status)
-      $runspace.Pipe.Dispose()
-  }
-  $RunspacePool.Close() 
-   $RunspacePool.Dispose()
-
-
-   $Grouplist = Get-ADGroup -Filter { GroupCategory -eq "Security" -and GroupScope -eq "Global" } -Properties isCriticalSystemObject
-   $LocalGroupList = Get-ADGroup -Filter { GroupScope -eq "domainlocal" } -Properties isCriticalSystemObject
-
-   #Computer Creation Time
-   write-host "Creating Computers on Domain" -ForegroundColor Green
-   $I++
-   $X = 1
-   $Jobs = @()
-   Write-Progress -Activity "Random Stuff into A domain - Creating Computers" -Status "Progress:" -PercentComplete ($i / $totalscripts * 100)
-   # .($basescriptPath + '\AD_Computers_Create\CreateComputers.ps1')
-    #Create a sessionstate function entry
-    
-    $Definition = Get-Content ($basescriptPath + '\AD_Computers_Create\CreateComputers.ps1') -ErrorAction Stop
-    $SessionStateFunction = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry -ArgumentList ‘CreateComputer’, $Definition
-    #Create a SessionStateFunction
-    $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-    $initialSessionState.ImportPSModule("ActiveDirectory")
-    $InitialSessionState.Commands.Add($SessionStateFunction)
- 
-    $RunspacePool = [RunspaceFactory]::CreateRunspacePool(1,5,$InitialSessionState,$Host)
-    $RunspacePool.Open()
-    $runspaces = $results = @()
-
-   do {
-      $PowerShell = [powershell]::Create()
-      [void]$PowerShell.AddScript({CreateComputer})
-      $PowerShell.RunspacePool = $RunspacePool
-      $runspaces += [PSCustomObject]@{ Pipe = $PowerShell; Status = $PowerShell.BeginInvoke() }
-
-      $x++
-   }while ($x -lt $ComputerCount)
-   while ($runspaces.Status.IsCompleted -notcontains $true) {
-        
-   }
-   foreach ($runspace in $runspaces ) {
-      # EndInvoke method retrieves the results of the asynchronous call
-      $results += $runspace.Pipe.EndInvoke($runspace.Status)
-      $runspace.Pipe.Dispose()
-  }
-  $RunspacePool.Close() 
-   $RunspacePool.Dispose()
-#>
