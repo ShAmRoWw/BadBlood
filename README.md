@@ -1,3 +1,7 @@
+This fork contains a significant refactor of BadBlood's core scripts, improving performance through batch-based group membership assignment (replacing per-user LDAP calls with chunked Add-ADGroupMember batches) and in-runspace caching of name lists and lookup files. It also removes broken multithreading code that caused AD connection limit issues, fixes a bug where the duplicate-name check variable wasn't reset per iteration, and adds member deduplication to prevent "already a member" errors.
+
+---
+
 BadBlood
 ========
 BadBlood by Secframe fills a Microsoft Active Directory Domain with a structure and thousands of objects. The output of the tool is a domain similar to a domain in the real world.  After BadBlood is ran on a domain, security analysts and engineers can practice using tools to gain an understanding and prescribe to securing Active Directory. Each time this tool runs, it produces different results.  The domain, users, groups, computers and permissions are different. Every. Single. Time.
